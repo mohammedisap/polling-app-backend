@@ -84,7 +84,7 @@ public class PollServiceTest {
 
         //then
         assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-        assertThat(response.getEntity()).isEqualTo("Poll ID is required");
+        assertThat(response.getEntity()).isEqualTo("Poll ID is required and cannot be empty");
     }
 
     @Test
@@ -113,7 +113,7 @@ public class PollServiceTest {
 
         //then
         assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-        assertThat(response.getEntity()).isEqualTo("Poll ID is required");
+        assertThat(response.getEntity()).isEqualTo("Poll ID is required and cannot be empty");
     }
 
     @Test
