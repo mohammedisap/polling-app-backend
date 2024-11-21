@@ -2,6 +2,7 @@ package com.isap.service;
 
 import com.isap.domain.Poll;
 import com.isap.repository.PollRepository;
+import com.isap.utils.ValidationUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -38,10 +39,10 @@ public class PollServiceImpl implements PollService {
     public Response getPoll(@QueryParam("pollId") String pollId) {
         log.info("Received request to get poll with pollId: {}", pollId);
 
-        if (pollId == null || pollId.isEmpty()) {
-            log.warn("Poll ID is missing or empty");
+        // Validate pollId
+        if (!ValidationUtils.validatePollId(pollId)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Poll ID is required").build();
+                    .entity("Poll ID is required and cannot be empty").build();
         }
 
         log.debug("Fetching poll data for pollId: {}", pollId);
@@ -59,11 +60,9 @@ public class PollServiceImpl implements PollService {
         result.put("pollId", poll.pollId());
         result.put("question", poll.question());
 
-        if (poll.options().size() > 7 || poll.options().size() < 2) {
-            log.error("Poll size out of bounds: {}", poll.options().size());
+        if (!ValidationUtils.validatePollOptionsCount(poll.options())) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(String.format("Poll has an invalid number of options: %s", poll.options().size()))
-                    .build();
+                    .entity("Poll options must have between 2 and 7 options").build();
         }
 
         result.put("options", poll.options());
@@ -80,16 +79,14 @@ public class PollServiceImpl implements PollService {
         String pollId = requestBody.get("pollId");
         String optionId = requestBody.get("optionId");
 
-        if (pollId == null || pollId.isEmpty()) {
-            log.warn("Poll ID is missing or empty");
+        if (!ValidationUtils.validatePollId(pollId)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Poll ID is required").build();
+                    .entity("Poll ID is required and cannot be empty").build();
         }
 
-        if (optionId == null || optionId.isEmpty()) {
-            log.warn("Option ID is missing or empty");
+        if (!ValidationUtils.validateOptionId(optionId)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Option ID is required").build();
+                    .entity("Option ID is required and cannot be empty").build();
         }
 
         log.info("Received vote request for pollId: {} and optionId: {}", pollId, optionId);
@@ -117,10 +114,9 @@ public class PollServiceImpl implements PollService {
     private Response getOptionsByPollId(String pollId) {
         log.debug("Fetching options with vote stat for pollId: {}", pollId);
 
-        if (pollId == null || pollId.isEmpty()) {
-            log.warn("Poll ID is missing or empty");
+        if (!ValidationUtils.validatePollId(pollId)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Poll ID is required").build();
+                    .entity("Poll ID is required and cannot be empty").build();
         }
 
         QueryResponse response = pollRepository.getOptionsByPollId(pollId);
@@ -137,23 +133,14 @@ public class PollServiceImpl implements PollService {
     public Response createPoll(Map<String, Object> newPollData) {
         log.info("Received request to create a new poll: {}", newPollData);
 
-        if (!newPollData.containsKey("question") ||
-                !(newPollData.get("question") instanceof String question)) {
-            log.warn("Poll question is missing or invalid: {}", newPollData.get("question"));
+        if (!ValidationUtils.validateCreatePollRequest(newPollData)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Poll question is required and should be a string").build();
-        }
-
-        if (!newPollData.containsKey("options") ||
-                !(newPollData.get("options") instanceof List)) {
-            log.warn("Poll options are missing or invalid: {}", newPollData.get("options"));
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Poll options are required and should be a list").build();
+                    .entity("Invalid poll data provided").build();
         }
 
         try {
             Map<String, List<String>> pollDataToPut = new HashMap<>();
-            newPollData.put(question, newPollData.get("options"));
+            pollDataToPut.put(newPollData.get("question").toString(), (List<String>) newPollData.get("options"));
 
             log.debug("Attempting to create a new poll with data: {}", newPollData);
             if (pollRepository.createPoll(pollDataToPut)) {
@@ -178,6 +165,11 @@ public class PollServiceImpl implements PollService {
     @Override
     public Response getPollVotes(@QueryParam("pollId") String pollId) {
         log.info("Received request to get votes for pollId: {}", pollId);
+
+        if (!ValidationUtils.validatePollId(pollId)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Poll ID is required and cannot be empty").build();
+        }
 
         QueryResponse response = pollRepository.getVotesByPollId(pollId);
         log.debug("Votes fetched for pollId: {}: {}", pollId, response.items());
