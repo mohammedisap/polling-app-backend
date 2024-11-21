@@ -1,0 +1,66 @@
+plugins {
+    id 'java'
+    id 'io.quarkus' version "${quarkusPlatformVersion}"
+}
+
+group = 'com.isap'
+version = '1.0.0-SNAPSHOT'
+description = 'Small polling app with Quarkus'
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://repository.jboss.org/nexus/content/repositories/releases/'
+    }
+    maven {
+        url 'https://repository.jboss.org/nexus/content/repositories/snapshots/'
+    }
+}
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+
+    implementation 'io.quarkus:quarkus-rest:3.16.3'  // RESTEasy Reactive (Jakarta)
+    implementation 'io.quarkiverse.amazonservices:quarkus-amazon-dynamodb:2.19.0'  // Quarkus DynamoDB extension
+    implementation 'io.quarkus:quarkus-logging-json:3.8.6'     // JSON Logging support in Quarkus
+
+    implementation group: 'software.amazon.awssdk', name: 'dynamodb', version: '2.29.17'  // DynamoDB SDK (AWS)
+    implementation 'software.amazon.awssdk:url-connection-client:2.17.110'  // Add this for HTTP connection support
+
+    implementation 'jakarta.enterprise:jakarta.enterprise.cdi-api:3.0.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.30'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    testImplementation("io.quarkus:quarkus-junit5")
+    testImplementation 'org.mockito:mockito-junit-jupiter:4.8.0'
+    testImplementation 'org.mockito:mockito-core:4.6.1'                // Mockito for mocking
+
+    // AWS SDK for DynamoDB (for mocking DynamoDB client in tests)
+    testImplementation 'software.amazon.awssdk:dynamodb:2.17.110'
+
+    // Google Truth for assertions in tests
+    testImplementation 'com.google.truth:truth:1.4.4'
+
+}
+
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+test {
+    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
+}
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}
