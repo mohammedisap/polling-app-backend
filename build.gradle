@@ -23,6 +23,7 @@ dependencies {
     implementation 'io.quarkus:quarkus-rest:3.16.3'  // RESTEasy Reactive (Jakarta)
     implementation 'io.quarkiverse.amazonservices:quarkus-amazon-dynamodb:2.19.0'  // Quarkus DynamoDB extension
     implementation 'io.quarkus:quarkus-logging-json:3.8.6'     // JSON Logging support in Quarkus
+    implementation 'io.quarkus:quarkus-amazon-lambda-http'
 
     implementation group: 'software.amazon.awssdk', name: 'dynamodb', version: '2.29.17'  // DynamoDB SDK (AWS)
     implementation 'software.amazon.awssdk:url-connection-client:2.17.110'  // Add this for HTTP connection support
@@ -31,9 +32,6 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
-
-    testCompileOnly 'org.projectlombok:lombok:1.18.30'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation 'org.mockito:mockito-junit-jupiter:4.8.0'
