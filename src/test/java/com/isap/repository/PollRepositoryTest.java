@@ -1,6 +1,7 @@
 package com.isap.repository;
 
 import com.isap.domain.Poll;
+import com.isap.exception.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -79,10 +80,17 @@ public class PollRepositoryTest {
         when(dynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(mockResponse);
 
         //when
-        GetItemResponse response = pollRepository.getPollByPollId(POLL_ID);
+//        GetItemResponse response = pollRepository.getPollByPollId(POLL_ID);
+
+        // Call the method under test
+        try {
+            pollRepository.getPollByPollId(POLL_ID);
+            fail("Expected exception but none was thrown");
+        } catch (NotFoundException e) {
+            assertThat(e).isInstanceOf(NotFoundException.class);
+        }
 
         //then
-        assertThat(response.item()).isEmpty();
         verify(dynamoDbClient).getItem(any(GetItemRequest.class));
     }
 
