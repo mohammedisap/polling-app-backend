@@ -22,7 +22,7 @@ public class PollRepositoryTest {
     private DynamoDbClient dynamoDbClient;
 
     @InjectMocks
-    private PollRepository pollRepository;
+    private PollRepositoryImpl pollRepository;
 
     private static final String POLL_ID = "poll1";
     private static final String QUESTION = "What is your favorite programming language?";
