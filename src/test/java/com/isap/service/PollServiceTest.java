@@ -2,6 +2,7 @@ package com.isap.service;
 
 import com.isap.domain.Poll;
 import com.isap.repository.PollRepository;
+import com.isap.repository.PollRepositoryImpl;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.dynamodb.model.*;
@@ -14,8 +15,8 @@ import static org.mockito.Mockito.*;
 
 public class PollServiceTest {
 
-    private final PollRepository pollRepository = mock(PollRepository.class);
-    private final PollService pollService = new PollService(pollRepository);
+    private final PollRepository pollRepository = mock(PollRepositoryImpl.class);
+    private final PollService pollService = new PollServiceImpl(pollRepository);
 
     private static final String POLL_ID = "poll1";
     private static final String QUESTION = "What is your favorite programming language?";
