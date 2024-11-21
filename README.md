@@ -195,3 +195,11 @@ sdk use java 17.0.10-graal
 ```
 
 I suggest using `sdkman` to manage your installations/versions of Quarkus and Java, it's really a great tool.
+
+
+### Further Refinement
+While I have included the necessary DTOs (Data Transfer Objects) in the project, they have not been fully implemented due to time constraints. 
+These DTOs were meant to be used for better separation of concerns and data encapsulation between layers.
+
+In the unit tests, I used any() alot to match arguments passed to mock methods, regardless of their specific values. 
+This simplifies the tests by focusing on verifying the behavior of the methods. However this should be changed to use specific values for better testing. 
