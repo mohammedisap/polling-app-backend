@@ -2,15 +2,16 @@ package com.isap.repository;
 
 import com.isap.domain.Poll;
 import com.isap.exception.NotFoundException;
+import com.isap.utils.DynamoDbHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import software.amazon.awssdk.http.SdkHttpResponse;
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
+import java.util.List;
 import java.util.Map;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -20,7 +21,7 @@ import static org.mockito.Mockito.*;
 public class PollRepositoryTest {
 
     @Mock
-    private DynamoDbClient dynamoDbClient;
+    private DynamoDbHelper dynamoDbHelper;
 
     @InjectMocks
     private PollRepositoryImpl pollRepository;
@@ -48,13 +49,13 @@ public class PollRepositoryTest {
 
     // Happy Path: Successfully retrieve a poll
     @Test
-    public void testGetPollByPoll_Id_success() {
+    public void testGetPollByPollId_success() {
         //given
         Map<String, AttributeValue> mockItem = createPollItem();
         GetItemResponse mockResponse = GetItemResponse.builder()
                 .item(mockItem)
                 .build();
-        when(dynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(mockResponse);
+        when(dynamoDbHelper.getItem(any())).thenReturn(mockResponse);
 
         //when
         GetItemResponse response = pollRepository.getPollByPollId(POLL_ID);
@@ -62,36 +63,34 @@ public class PollRepositoryTest {
         //then
         assertThat(response).isNotNull();
         assertThat(POLL_ID).isEqualTo(response.item().get("PK").s());
-        assertThat("What is your favorite programming language?").isEqualTo(response.item().get("question").s());
+        assertThat(QUESTION).isEqualTo(response.item().get("question").s());
         assertThat(response.item().get("options")).isNotNull();
         assertThat(response.item().get("options").m()).containsKey(OPTION_ID);
         assertThat(response.item().get("options").m().get(OPTION_ID).s()).isEqualTo("Java");
         assertThat(response.item().get("options").m()).containsKey(OPTION_ID2);
         assertThat(response.item().get("options").m().get(OPTION_ID2).s()).isEqualTo("Python");
 
-        verify(dynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(dynamoDbHelper).getItem(any());
     }
 
     // Failure Path - Poll not found
     @Test
-    public void testGetPoll_PollBy_pollIdNotFound() {
+    public void testGetPollByPollId_pollIdNotFound() {
         //given
         GetItemResponse mockResponse = GetItemResponse.builder().build();
-        when(dynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(mockResponse);
+        when(dynamoDbHelper.getItem(any())).thenReturn(mockResponse);
 
         //when
-//        GetItemResponse response = pollRepository.getPollByPollId(POLL_ID);
-
-        // Call the method under test
         try {
             pollRepository.getPollByPollId(POLL_ID);
             fail("Expected exception but none was thrown");
         } catch (NotFoundException e) {
             assertThat(e).isInstanceOf(NotFoundException.class);
+            assertThat(e.getMessage()).contains("Poll not found with ID: " + POLL_ID);
         }
 
         //then
-        verify(dynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(dynamoDbHelper).getItem(any());
     }
 
     // Happy Path - Successfully increment vote count
@@ -102,24 +101,24 @@ public class PollRepositoryTest {
         SdkHttpResponse mockHttpResponse = SdkHttpResponse.builder().statusCode(200).build();
 
         //given
-        when(dynamoDbClient.updateItem(any(UpdateItemRequest.class))).thenReturn(mockUpdateResponse);
+        when(dynamoDbHelper.updateItem(any(), any(), any())).thenReturn(mockUpdateResponse);
         when(mockUpdateResponse.sdkHttpResponse()).thenReturn(mockHttpResponse);
 
-        when(dynamoDbClient.putItem(any(PutItemRequest.class))).thenReturn(mockPutResponse);
+        when(dynamoDbHelper.putItem(any())).thenReturn(mockPutResponse);
         when(mockPutResponse.sdkHttpResponse()).thenReturn(mockHttpResponse);
 
         //when then
         assertThat(pollRepository.incrementVoteCount(POLL_ID, OPTION_ID)).isTrue();
-        verify(dynamoDbClient).updateItem(any(UpdateItemRequest.class));
+        verify(dynamoDbHelper).updateItem(any(), any(), any());
     }
 
     // Failure Path - Vote update fails
     @Test
     public void testIncrementVoteCount_failure() {
-        // Simulate an exception when calling updateItem
-        when(dynamoDbClient.updateItem(any(UpdateItemRequest.class))).thenThrow(DynamoDbException.class);
+        //given
+        when(dynamoDbHelper.updateItem(any(), any(), any())).thenThrow(DynamoDbException.class);
 
-        // Call the method under test
+        //when then
         try {
             assertThat(pollRepository.incrementVoteCount(POLL_ID, OPTION_ID)).isFalse();
             fail("Expected exception but none was thrown");
@@ -127,8 +126,59 @@ public class PollRepositoryTest {
             assertThat(e).isInstanceOf(DynamoDbException.class);
         }
 
-        verify(dynamoDbClient).updateItem(any(UpdateItemRequest.class));
+        verify(dynamoDbHelper).updateItem(any(), any(), any());
     }
 
+    // Failure Path - Put vote fails
+    @Test
+    public void testIncrementVoteCount_putVoteFailure() {
+        UpdateItemResponse mockUpdateResponse = mock(UpdateItemResponse.class);
+        SdkHttpResponse mockHttpResponse = SdkHttpResponse.builder().statusCode(200).build();
 
+        //given
+        when(dynamoDbHelper.updateItem(any(), any(), any())).thenReturn(mockUpdateResponse);
+        when(mockUpdateResponse.sdkHttpResponse()).thenReturn(mockHttpResponse);
+        when(dynamoDbHelper.putItem(any())).thenThrow(DynamoDbException.class);
+
+        //when then
+        try {
+            assertThat(pollRepository.incrementVoteCount(POLL_ID, OPTION_ID)).isFalse();
+            fail("Expected exception but none was thrown");
+        } catch (DynamoDbException e) {
+            assertThat(e).isInstanceOf(DynamoDbException.class);
+        }
+        verify(dynamoDbHelper).updateItem(any(), any(), any());
+    }
+
+    // Happy Path: Successfully create a poll
+    @Test
+    public void testCreatePoll_success() {
+        Map<String, List<String>> newPollData = Map.of(QUESTION, List.of("Java", "Python"));
+
+        //given
+        when(dynamoDbHelper.createPollAndOptions(any())).thenReturn(true);
+
+        //when
+        boolean result = pollRepository.createPoll(newPollData);
+
+        //then
+        assertThat(result).isTrue();
+        verify(dynamoDbHelper).createPollAndOptions(newPollData);
+    }
+
+    // Failure Path: Poll creation fails
+    @Test
+    public void testCreatePoll_failure() {
+        Map<String, List<String>> newPollData = Map.of(QUESTION, List.of("Java", "Python"));
+
+        //given
+        when(dynamoDbHelper.createPollAndOptions(any())).thenReturn(false);
+
+        //when
+        boolean result = pollRepository.createPoll(newPollData);
+
+        //then
+        assertThat(result).isFalse();
+        verify(dynamoDbHelper).createPollAndOptions(newPollData);
+    }
 }
