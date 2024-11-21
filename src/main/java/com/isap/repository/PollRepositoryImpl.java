@@ -6,7 +6,6 @@ import com.isap.utils.DynamoDbHelper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.time.Instant;
@@ -22,16 +21,11 @@ import static com.isap.domain.Vote.SK_VOTE;
 @Slf4j
 public class PollRepositoryImpl implements PollRepository {
 
-    private static final String TABLE_NAME = "PollTable";
     private final DynamoDbHelper dynamoDbHelper;
 
-    // Constants for query expressions
-    private static final String GSI1PK = "GSI1PK";
-    private static final String GSI1SK = "GSI1SK";
-
     @Inject
-    public PollRepositoryImpl(DynamoDbClient dynamoDbClient) {
-        this.dynamoDbHelper = new DynamoDbHelper(dynamoDbClient);
+    public PollRepositoryImpl(DynamoDbHelper dynamoDbHelper) {
+        this.dynamoDbHelper = dynamoDbHelper;
     }
 
     @Override
@@ -48,7 +42,7 @@ public class PollRepositoryImpl implements PollRepository {
                 "SK", AttributeValue.builder().s(SK_POLL).build()
         );
 
-        GetItemResponse response = dynamoDbHelper.getItem(TABLE_NAME, key);
+        GetItemResponse response = dynamoDbHelper.getItem(key);
 
         if (response == null || response.item().isEmpty()) {
             log.warn("Poll not found for PollID: {}", pollId);
@@ -71,7 +65,7 @@ public class PollRepositoryImpl implements PollRepository {
         Map<String, AttributeValue> values = Map.of(":increment", AttributeValue.builder().n("1").build());
         String updateExpression = "SET VoteCount = VoteCount + :increment";
 
-        UpdateItemResponse updateItemResponse = dynamoDbHelper.updateItem(TABLE_NAME, key, updateExpression, values);
+        UpdateItemResponse updateItemResponse = dynamoDbHelper.updateItem(key, updateExpression, values);
 
         if (updateItemResponse.sdkHttpResponse().isSuccessful()) {
             log.info("Vote count incremented successfully for OptionID: {}", optionId);
@@ -87,7 +81,7 @@ public class PollRepositoryImpl implements PollRepository {
         log.debug("Inserting vote for PollID: {} and OptionID: {}", pollId, optionId);
 
         Map<String, AttributeValue> item = new Vote(UUID.randomUUID().toString(), pollId, optionId, Instant.now().toString()).toDynamoDbItem();
-        PutItemResponse putItemResponse = dynamoDbHelper.putItem(TABLE_NAME, item);
+        PutItemResponse putItemResponse = dynamoDbHelper.putItem(item);
 
         if (putItemResponse.sdkHttpResponse().isSuccessful()) {
             log.info("Vote inserted successfully for PollID: {} and OptionID: {}", pollId, optionId);
@@ -108,7 +102,7 @@ public class PollRepositoryImpl implements PollRepository {
                 ":SK", AttributeValue.builder().s(SK_VOTE).build()
         );
 
-        return dynamoDbHelper.queryItems(TABLE_NAME, "GSI1", "GSI1PK = :pollId AND GSI1SK = :SK", expressionValues);
+        return dynamoDbHelper.queryItems("GSI1", "GSI1PK = :pollId AND GSI1SK = :SK", expressionValues);
     }
 
     @Override
@@ -120,13 +114,18 @@ public class PollRepositoryImpl implements PollRepository {
                 ":SK", AttributeValue.builder().s(SK_OPTION).build()
         );
 
-        return dynamoDbHelper.queryItems(TABLE_NAME, "GSI1", "GSI1PK = :pollId AND GSI1SK = :SK", expressionValues);
+        return dynamoDbHelper.queryItems("GSI1", "GSI1PK = :pollId AND GSI1SK = :SK", expressionValues);
     }
 
     @Override
     public boolean createPoll(Map<String, List<String>> newPollData) {
         log.info("Creating a new poll with data: {}", newPollData);
 
-        return dynamoDbHelper.createPollAndOptions(TABLE_NAME, newPollData);
+        if (newPollData.size() != 1) {
+            log.error("Invalid poll data format. Expected exactly one entry, but got: {}", newPollData.size());
+            throw new IllegalArgumentException("New poll data should have exactly one entry");
+        }
+
+        return dynamoDbHelper.createPollAndOptions(newPollData);
     }
 }
