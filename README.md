@@ -169,9 +169,7 @@ gradle build
 
 To test:
 
-```bash
-gradle test
-```
+See the Testing section below. You will be able to run ALL tests from there.
 
 Make sure you have an up-to-date version of Quarkus installed on your machine. Instructions can be found here: https://quarkus.io/get-started/.
 
@@ -196,7 +194,59 @@ sdk use java 17.0.10-graal
 
 I suggest using `sdkman` to manage your installations/versions of Quarkus and Java, it's really a great tool.
 
+---
 
+## Testing
+This section provides instructions on how to run the integration tests using a local DynamoDB instance.
+
+## Prerequisites
+
+Before running the tests, ensure you have the following tools installed:
+
+- **Docker**: To run DynamoDB Local in a Docker container.
+- **Java 17 or later**: Required to run the application and the tests.
+- **Maven**: Used to run the tests.
+- **JUnit 5**: The testing framework for running the tests.
+
+## Step 1: Start Local DynamoDB Instance Using Docker
+
+1. Open a terminal and run the following Docker command to start DynamoDB Local:
+
+   ```bash
+   docker run -d -p 8000:8000 amazon/dynamodb-local
+   ```
+   
+2. Verify that DynamoDB Local is running by visiting http://localhost:8000/shell in your browser or by using the AWS CLI.
+
+## Step 2:  Running the Integration Tests
+
+1. **Build the Project**:
+
+   Ensure your project is built by running:
+
+   ```bash
+   gradle clean install
+   ```
+
+2. **Run the tests**:
+  
+    ```bash
+    gradle test
+    ```
+  
+    This will run all the tests, including the integration tests that interact with the local DynamoDB instance.
+
+## Step 3: Verify Table Creation and Cleanup
+
+After running the tests, the PollTable will be created in your local DynamoDB instance. You can verify this by running the following command to list the tables:
+
+  ```bash
+  aws dynamodb list-tables --endpoint-url http://localhost:8000
+  ```
+
+**Table creation errors**: Check if the table schema matches the required structure and ensure that indexes GSI1 and GSI2 are created as needed.
+
+---
 ### Further Refinement
 While I have included the necessary DTOs (Data Transfer Objects) in the project, they have not been fully implemented due to time constraints. 
 These DTOs were meant to be used for better separation of concerns and data encapsulation between layers.
